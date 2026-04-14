@@ -511,9 +511,9 @@
     fd.append('file_col',       fileCol);
     fd.append('csv_file',       csvFile);
     for(const f of attachFiles) fd.append('files', f);
-
+   const BACKEND = 'https://import-file.vercel.app';
    // const resp = await fetch('/api/upload', { method:'POST', body: fd });
-    const resp = await fetch('https://import-file.vercel.app/api/upload', { method:'POST', body: fd });
+    const resp = await fetch(BACKEND +'/api/upload', { method:'POST', body: fd });
     if(!resp.ok){ alert('Upload failed: '+await resp.text()); btn.disabled=false; btn.textContent='Start bulk upload →'; return; }
     const {job_id, total} = await resp.json();
 
@@ -526,7 +526,7 @@
   }
 
   async function poll(jobId, total){
-    const r = await fetch('/api/job/'+jobId);
+    const r = await fetch(BACKEND +'/api/job/'+jobId);
     const j = await r.json();
 
     const done = j.success + j.failed + j.skipped;
