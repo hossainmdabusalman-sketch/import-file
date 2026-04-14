@@ -512,7 +512,8 @@
     fd.append('csv_file',       csvFile);
     for(const f of attachFiles) fd.append('files', f);
 
-    const resp = await fetch('/api/upload', { method:'POST', body: fd });
+   // const resp = await fetch('/api/upload', { method:'POST', body: fd });
+    const resp = await fetch('https://import-file.vercel.app/api/upload', { method:'POST', body: fd });
     if(!resp.ok){ alert('Upload failed: '+await resp.text()); btn.disabled=false; btn.textContent='Start bulk upload →'; return; }
     const {job_id, total} = await resp.json();
 
