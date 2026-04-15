@@ -412,7 +412,17 @@ def process_row(
                 timeout=30,
             )
             patch_resp.raise_for_status()
-
+            # ── Step 4: Hide attachment from "Manage Attachments" banner ────
+            # Update the sys_attachment record's table_name to a dummy value
+            # so it won't show in the form's attachment bar, but the reference
+            # in file_attachment field still resolves correctly.
+            hide_url = f"{base}/api/now/table/sys_attachment/{attachment_sys_id}"
+            session.patch(
+                hide_url,
+                json={"table_name": f"{table_name}_hidden"},
+                timeout=30,
+            )
+            
             update_job(job_id, "success", f"OK [{index}] {file_name}", len(file_bytes))
             return
 
