@@ -9,6 +9,7 @@ from __future__ import annotations
 import csv
 import io
 import json
+import os
 import threading
 import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -101,7 +102,8 @@ async def upload(request: Request) -> dict:
 
         files_map: dict[str, bytes] = {}
         for f in uploaded_files:
-            files_map[f.filename] = await f.read()
+            bare_name = os.path.basename(f.filename)  # strip subfolder path
+            files_map[bare_name] = await f.read()
 
         job_id = str(uuid.uuid4())[:8]
         store.create(job_id, total=len(rows))

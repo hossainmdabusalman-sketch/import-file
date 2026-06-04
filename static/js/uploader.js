@@ -38,7 +38,34 @@ export async function submitUpload(params) {
 
   return response.json();
 }
+// export async function submitUpload(params) {
+//   const snapshottedParams = {
+//     ...params,
+//     csvFile:     await _snapshotFile(params.csvFile),
+//     attachFiles: await Promise.all(params.attachFiles.map(_snapshotFile)),
+//   };
 
+//   const fd = _buildFormData(snapshottedParams);
+//   const response = await fetch('/api/upload', { method: 'POST', body: fd });
+
+//   if (!response.ok) {
+//     const message = await response.text().catch(() => response.statusText);
+//     throw new Error(`Upload failed (${response.status}): ${message}`);
+//   }
+
+//   return response.json();
+// }
+
+/**
+ * Read a File into memory so the upload is immune to on-disk changes.
+ *
+ * @param {File} file
+ * @returns {Promise<File>}
+ */
+// async function _snapshotFile(file) {
+//   const buffer = await file.arrayBuffer();
+//   return new File([buffer], file.name, { type: file.type });
+// }
 // Private 
 
 /**
@@ -47,6 +74,27 @@ export async function submitUpload(params) {
  * @param {UploadParams} params
  * @returns {FormData}
  */
+// function _buildFormData({
+//   instance, username, password, tableName, attachField,
+//   workers, fieldMappings, fileCol, csvFile, attachFiles,
+// }) {
+//   const fd = new FormData();
+
+//   fd.append('instance',       instance);
+//   fd.append('username',       username);
+//   fd.append('password',       password);
+//   fd.append('table_name',     tableName);
+//   fd.append('attach_field',   attachField);
+//   fd.append('max_workers',    workers);
+//   fd.append('field_mappings', JSON.stringify(fieldMappings));
+//   fd.append('file_col',       fileCol);
+//   fd.append('csv_file',       csvFile);
+
+//   for (const file of attachFiles) fd.append('files', file);
+
+//   return fd;
+// }
+
 function _buildFormData({
   instance, username, password, tableName, attachField,
   workers, fieldMappings, fileCol, csvFile, attachFiles,
@@ -63,7 +111,11 @@ function _buildFormData({
   fd.append('file_col',       fileCol);
   fd.append('csv_file',       csvFile);
 
-  for (const file of attachFiles) fd.append('files', file);
+  for (const file of attachFiles) {
+    // Strip subfolder path — rename to just the filename
+    const stripped = new File([file], file.name, { type: file.type });
+    fd.append('files', stripped);
+  }
 
   return fd;
 }

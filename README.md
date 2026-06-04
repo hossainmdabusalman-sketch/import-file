@@ -7,6 +7,7 @@ A FastAPI backend + HTML frontend for bulk-inserting CSV records and attaching f
 ```bash
 # 1. Install dependencies
 pip install -r requirements.txt
+python -m pip install -r requirements.txt         //powersell
 
 # 2. Run the server
 python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
