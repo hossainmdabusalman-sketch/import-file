@@ -1,3 +1,159 @@
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ServiceNow Bulk Uploader</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%234f8ef7' width='100' height='100'/><text x='50' y='65' font-size='70' font-weight='bold' fill='white' text-anchor='middle'>↑</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Sora:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/main.css">
+</head>
+<body>
+
+<div class="header">
+  <h1>ServiceNow Bulk Uploader</h1>
+  <p>Upload CSV + files folder → bulk insert with live metrics</p>
+</div>
+
+<div class="shell">
+
+  <div class="card">
+    <div class="card-title">
+      ServiceNow connection
+      <span class="badge" id="config-status" style="display:none">config loaded</span>
+    </div>
+
+    <div class="grid3" style="margin-bottom:.75rem">
+      <div>
+        <label>Instance URL <span class="req">*</span></label>
+        <input id="instance" type="url" placeholder="https://xxx.service-now.com/">
+      </div>
+      <div>
+        <label>Username <span class="req">*</span></label>
+        <input id="username" type="text" placeholder="admin">
+      </div>
+      <div>
+        <label>Password <span class="req">*</span></label>
+        <input id="password" type="password" placeholder="••••••••">
+      </div>
+    </div>
+
+    <div class="grid4">
+      <div>
+        <label>Table name <span class="req">*</span></label>
+        <input id="table" type="text" placeholder="x_your_scope_table_name">
+      </div>
+      <div>
+        <label>Attachment field <span class="req">*</span></label>
+        <input id="attach-field" type="text" value="file_attachment" placeholder="file_attachment">
+      </div>
+      <div>
+        <label>Max workers (threads)</label>
+        <input id="workers" type="number" value="20" min="1" max="50">
+      </div>
+    </div>
+
+    <div class="info-box">
+      <strong>Attachment field</strong> — the ServiceNow field on your table that stores the file
+      reference (e.g. <code>file_attachment</code>). The uploader will: create the record →
+      upload the file → patch the record to set this field to the uploaded file's sys_id.
+    </div>
+
+    <div class="config-row">
+      <span id="config-hint">Save your connection settings for next time.</span>
+      <button class="btn-sm"        onclick="clearConfig()">Clear</button>
+      <button class="btn-sm accent" onclick="saveConfig()">Save config</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Files to upload</div>
+    <div class="drop-row">
+
+      <div class="drop" id="drop-csv">
+        <input type="file" accept=".csv">
+        <div class="drop-icon">📄</div>
+        <div class="drop-label">
+          Drop CSV file here<br>
+          <span style="color:var(--accent);font-size:.72rem">or click to browse</span>
+        </div>
+        <div class="drop-name" id="csv-name">No file selected</div>
+      </div>
+
+      <div class="drop" id="drop-files">
+        <input type="file" webkitdirectory directory multiple>
+        <div class="drop-icon">📁</div>
+        <div class="drop-label">
+          Drop master folder here<br>
+          <span style="color:var(--accent);font-size:.72rem">or click to browse a folder</span>
+        </div>
+        <div class="drop-name" id="files-name">No folder selected</div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="card" id="mapping-section">
+    <div class="card-title">
+      Table field mapping
+      <span class="badge" id="col-count-badge"></span>
+    </div>
+    <p class="mapping-hint" style="margin-bottom:1rem">
+      CSV columns are detected below. Each field maps to a <strong>ServiceNow table column</strong>.<br>
+      By default the field name matches the CSV header — edit any that differ in your table.
+    </p>
+    <div class="mapping-grid" id="mapping-grid"></div>
+    <p class="mapping-hint" style="margin-top:1rem">
+      💡 The column whose value is the <strong>attachment filename</strong> will be used to
+      match uploaded files. Set the <strong>Attachment file column</strong> below.
+    </p>
+    <div style="margin-top:.75rem; max-width:260px">
+      <label>Attachment file column <span class="req">*</span></label>
+      <select id="file-col-select"></select>
+    </div>
+  </div>
+
+
+  <button class="btn-run" id="btn" onclick="startUpload()">Start bulk upload →</button>
+
+
+  <div class="card progress-panel" id="progress-panel">
+    <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1rem">
+      <span class="status-badge running" id="status-badge">running</span>
+      <span style="font-size:.8rem;color:var(--muted);font-family:var(--mono)" id="job-id-label"></span>
+    </div>
+
+    <div class="metrics-grid">
+      <div class="metric"><div class="metric-label">success</div><div class="metric-val green" id="m-ok">0</div></div>
+      <div class="metric"><div class="metric-label">failed</div><div class="metric-val red"   id="m-fail">0</div></div>
+      <div class="metric"><div class="metric-label">skipped</div><div class="metric-val amber" id="m-skip">0</div></div>
+      <div class="metric"><div class="metric-label">rec/s</div><div class="metric-val blue"   id="m-rps">—</div></div>
+    </div>
+
+    <div class="bar-wrap"><div class="bar-fill" id="bar"></div></div>
+    <div class="bar-info">
+      <span id="bar-pct">0%</span>
+      <span id="bar-count">0 / 0</span>
+      <span id="bar-eta">ETA —</span>
+    </div>
+
+    <div class="log-wrap" id="log"></div>
+
+    <div id="summary" style="display:none;margin-top:1.25rem">
+      <div class="card-title">final summary</div>
+      <table class="summary-table" id="summary-table"></table>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module" src="/static/js/main.js"></script>
+
+</body>
+</html> -->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -83,7 +239,7 @@
       </div>
 
       <div class="drop" id="drop-files">
-        <input type="file" webkitdirectory directory multiple>
+        <input type="file" webkitdirectory mozdirectory multiple>
         <div class="drop-icon">📁</div>
         <div class="drop-label">
           Drop master folder here<br>
@@ -96,7 +252,7 @@
   </div>
 
   <!-- Column mapping card (hidden until CSV is loaded) -->
-  <div class="card" id="mapping-section">
+  <div class="card" id="mapping-section" style="display:none">
     <div class="card-title">
       Table field mapping
       <span class="badge" id="col-count-badge"></span>
@@ -106,20 +262,50 @@
       By default the field name matches the CSV header — edit any that differ in your table.
     </p>
     <div class="mapping-grid" id="mapping-grid"></div>
-    <p class="mapping-hint" style="margin-top:1rem">
-      💡 The column whose value is the <strong>attachment filename</strong> will be used to
-      match uploaded files. Set the <strong>Attachment file column</strong> below.
+
+    <p class="mapping-hint" style="margin-top:1.25rem">
+      💡 Select which CSV columns identify the <strong>subfolder</strong> and the
+      <strong>attachment filename</strong>. These are combined to build a unique file key —
+      e.g. <code>col1_logical_key = "c"</code> + <code>col3_file_attachment = "b.pdf"</code>
+      → stored in ServiceNow as <code>c/b.pdf</code>.
     </p>
-    <div style="margin-top:.75rem; max-width:260px">
-      <label>Attachment file column <span class="req">*</span></label>
-      <select id="file-col-select"></select>
+
+    <!-- Two selectors side by side -->
+    <div style="display:flex;gap:1.5rem;margin-top:.75rem;flex-wrap:wrap">
+
+      <div style="min-width:220px">
+        <label>
+          Folder / key column <span class="req">*</span><br>
+          <small style="color:var(--muted);font-size:.7rem">
+            The column whose value is the subfolder name (e.g. col1_logical_key → "c")
+          </small>
+        </label>
+        <select id="file-path-col-select"></select>
+      </div>
+
+      <div style="min-width:220px">
+        <label>
+          Attachment filename column <span class="req">*</span><br>
+          <small style="color:var(--muted);font-size:.7rem">
+            The column whose value is the file name (e.g. col3_file_attachment → "b.pdf")
+          </small>
+        </label>
+        <select id="file-col-select"></select>
+      </div>
+
+    </div>
+
+    <div class="info-box" style="margin-top:.75rem">
+      Combined lookup key: <code>&lt;folder column value&gt;/&lt;filename column value&gt;</code>
+      → e.g. <code>c/b.pdf</code>. This is also how the file is stored in ServiceNow's
+      <strong>File Name</strong> field so each record's attachment is uniquely identifiable.
     </div>
   </div>
 
-  <!-- Run button  -->
+  <!-- Run button -->
   <button class="btn-run" id="btn" onclick="startUpload()">Start bulk upload →</button>
 
-  <!-- Progress panel-->
+  <!-- Progress panel -->
   <div class="card progress-panel" id="progress-panel">
     <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1rem">
       <span class="status-badge running" id="status-badge">running</span>

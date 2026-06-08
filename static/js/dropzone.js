@@ -137,6 +137,7 @@ function _bindZone(zoneId, nameId, { folder = false, onPick, label }) {
     const payload = folder ? [...rawFiles] : rawFiles[0];
     if (!payload || (Array.isArray(payload) && !payload.length)) return;
     nameEl.textContent = label(payload);
+    console.log('Picked files:', payload);
     onPick(payload);
   };
 
